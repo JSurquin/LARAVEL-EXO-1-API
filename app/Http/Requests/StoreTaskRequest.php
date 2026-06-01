@@ -23,11 +23,12 @@ class StoreTaskRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Règles de validation pour POST /api/tasks
         return [
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
             'status'      => ['nullable', Rule::in(['todo', 'in_progress', 'done'])],
-            'due_date'    => 'nullable|date|after:today',
+            'due_date'    => 'nullable|date|after:today', // Doit être une date future
         ];
     }
 }

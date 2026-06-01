@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            $table->text('description')->nullable();
-            $table->enum('status', ['todo', 'in_progress', 'done'])->default('todo');
-            $table->date('due_date')->nullable();
-            $table->timestamps();
+            $table->string('title');                                              // Titre obligatoire
+            $table->text('description')->nullable();                                // Description optionnelle
+            $table->enum('status', ['todo', 'in_progress', 'done'])->default('todo'); // Statut avec valeur par défaut
+            $table->date('due_date')->nullable();                                   // Date d'échéance optionnelle
+            $table->timestamps();                                                   // created_at / updated_at
         });
     }
 

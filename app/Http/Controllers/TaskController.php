@@ -9,7 +9,7 @@ use App\Http\Requests\UpdateTaskRequest;
 class TaskController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * GET /api/tasks — Liste paginée (10/page), filtrable par ?status=
      */
     public function index()
     {
@@ -19,7 +19,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * POST /api/tasks — Crée une tâche (validation via StoreTaskRequest)
      */
     public function store(StoreTaskRequest $request)
     {
@@ -27,7 +27,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * GET /api/tasks/{task} — Affiche une tâche (route model binding)
      */
     public function show(Task $task)
     {
@@ -35,7 +35,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * PUT/PATCH /api/tasks/{task} — Met à jour une tâche
      */
     public function update(UpdateTaskRequest $request, Task $task)
     {
@@ -44,7 +44,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * DELETE /api/tasks/{task} — Supprime une tâche (204 No Content)
      */
     public function destroy(Task $task)
     {
