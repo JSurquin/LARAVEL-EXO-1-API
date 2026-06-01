@@ -1,7 +1,13 @@
-# API Tasks — Laravel 13
+# Laravel App — Corrections
 
-Application Laravel exposant une **API REST CRUD** pour gérer des tâches (`tasks`).  
-Base de données **SQLite**, réponses JSON automatiques sur les routes `/api/*`.
+Projet Laravel 13 regroupant deux exercices distincts, chacun identifié par son commit Git.
+
+| Exercice | Commit | Message |
+|----------|--------|---------|
+| **Exercice 1** — API REST Tasks | [`c14b900`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/c14b900) | `feat: enhance README and implement task management API with CRUD operations` |
+| **Exercice 2** — Composants Blade UI | [`ff6d457`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/ff6d457) | `feat: add reusable UI components and demo page` |
+
+> Commit initial du projet : `6c12af0` — `feat: first commit with implementation of basic api task`
 
 ---
 
@@ -9,11 +15,16 @@ Base de données **SQLite**, réponses JSON automatiques sur les routes `/api/*`
 
 - [Prérequis](#prérequis)
 - [Installation](#installation)
-- [Commandes utilisées](#commandes-utilisées)
-- [Endpoints API](#endpoints-api)
-- [Structure du projet](#structure-du-projet)
-- [Détail des fichiers](#détail-des-fichiers)
-- [Exemples de requêtes](#exemples-de-requêtes)
+- [Exercice 1 — API REST Tasks](#exercice-1--api-rest-tasks)
+  - [Commandes (Exo 1)](#commandes-exo-1)
+  - [Endpoints API](#endpoints-api)
+  - [Fichiers du commit `c14b900`](#fichiers-du-commit-c14b900)
+- [Exercice 2 — Composants Blade UI](#exercice-2--composants-blade-ui)
+  - [Commandes (Exo 2)](#commandes-exo-2)
+  - [Page de démonstration](#page-de-démonstration)
+  - [Fichiers du commit `ff6d457`](#fichiers-du-commit-ff6d457)
+- [Exemples de requêtes API](#exemples-de-requêtes-api)
+- [Stack technique](#stack-technique)
 
 ---
 
@@ -28,35 +39,30 @@ Base de données **SQLite**, réponses JSON automatiques sur les routes `/api/*`
 ## Installation
 
 ```bash
-# Cloner le dépôt puis installer les dépendances
 composer install
-
-# Copier la configuration d'environnement
 cp .env.example .env
-
-# Générer la clé d'application
 php artisan key:generate
-
-# Créer le fichier SQLite (s'il n'existe pas)
 touch database/database.sqlite
-
-# Exécuter les migrations
 php artisan migrate
-
-# (Optionnel) Peupler la base avec des tâches de démonstration
-php artisan db:seed --class=TaskSeeder
-
-# Lancer le serveur de développement
+php artisan db:seed --class=TaskSeeder   # Exo 1 — optionnel
 php artisan serve
 ```
 
-L'API est accessible à l'adresse : `http://127.0.0.1:8000/api/tasks`
+| Ressource | URL |
+|-----------|-----|
+| API Tasks | `http://127.0.0.1:8000/api/tasks` |
+| Démo composants (Exo 2) | `http://127.0.0.1:8000/components-demo` |
 
 ---
 
-## Commandes utilisées
+# Exercice 1 — API REST Tasks
 
-Commandes Artisan et Composer exécutées lors de la mise en place du projet :
+> **Commit :** `c14b900` — `feat: enhance README and implement task management API with CRUD operations`
+
+Application d'une **API REST CRUD** pour gérer des tâches (`tasks`).  
+Base de données **SQLite**, réponses JSON automatiques sur les routes `/api/*`.
+
+## Commandes (Exo 1)
 
 | Commande | Rôle |
 |----------|------|
@@ -74,8 +80,6 @@ Commandes Artisan et Composer exécutées lors de la mise en place du projet :
 | `php artisan db:seed --class=TaskSeeder` | Insertion des tâches de démo |
 | `php artisan serve` | Serveur HTTP local (port 8000) |
 | `php artisan route:list --path=api` | Liste des routes API enregistrées |
-
----
 
 ## Endpoints API
 
@@ -96,40 +100,11 @@ Commandes Artisan et Composer exécutées lors de la mise en place du projet :
 | `status` | enum | Non (défaut : `todo`) | `todo`, `in_progress`, `done` |
 | `due_date` | date | Non | format date, doit être **après aujourd'hui** |
 
----
-
-## Structure du projet
-
-```
-laravel-app/
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   └── TaskController.php      # Logique CRUD API
-│   │   └── Requests/
-│   │       ├── StoreTaskRequest.php    # Règles de validation (POST)
-│   │       └── UpdateTaskRequest.php   # Règles de validation (PUT/PATCH)
-│   └── Models/
-│       └── Task.php                    # Modèle Eloquent
-├── bootstrap/
-│   └── app.php                         # Config routing API + JSON errors
-├── database/
-│   ├── migrations/
-│   │   └── ..._create_tasks_table.php  # Schéma table tasks
-│   └── seeders/
-│       └── TaskSeeder.php              # Données de démonstration
-└── routes/
-    └── api.php                         # Route apiResource tasks
-```
-
----
-
-## Détail des fichiers
+## Fichiers du commit `c14b900`
 
 ### `routes/api.php`
 
-Enregistre une **route resource API** pour le contrôleur `TaskController`.  
-Laravel génère automatiquement les 5 routes REST (`index`, `store`, `show`, `update`, `destroy`) avec le préfixe `/api`.
+Enregistre une **route resource API** (`Route::apiResource`) pour le contrôleur `TaskController`. Laravel génère automatiquement les 5 routes REST sous le préfixe `/api`.
 
 ---
 
@@ -138,7 +113,7 @@ Laravel génère automatiquement les 5 routes REST (`index`, `store`, `show`, `u
 Configuration de l'application Laravel 13 :
 
 - **Routing** : charge `routes/api.php` en plus des routes web et console.
-- **Exceptions** : force le rendu JSON des erreurs pour toutes les requêtes dont l'URL commence par `api/*` (422 validation, 404, etc.).
+- **Exceptions** : force le rendu JSON des erreurs pour toutes les requêtes `api/*` (422 validation, 404, etc.).
 
 ---
 
@@ -159,8 +134,8 @@ Migration créant la table `tasks` :
 
 Modèle Eloquent représentant une tâche :
 
-- `$fillable` — champs assignables en masse (`create` / `update`)
-- `$casts` — cast de `due_date` en objet `Carbon` (date)
+- `$fillable` — champs assignables en masse (`title`, `description`, `status`, `due_date`)
+- `$casts` — cast de `due_date` en objet `Carbon`
 
 ---
 
@@ -170,7 +145,7 @@ Form Request pour la **création** (`POST /api/tasks`) :
 
 - `title` : requis, string, max 255
 - `description` : optionnel
-- `status` : optionnel, doit être dans `todo | in_progress | done`
+- `status` : optionnel, `todo | in_progress | done`
 - `due_date` : optionnel, date postérieure à aujourd'hui
 
 ---
@@ -179,7 +154,7 @@ Form Request pour la **création** (`POST /api/tasks`) :
 
 Form Request pour la **mise à jour** (`PUT/PATCH /api/tasks/{id}`) :
 
-- Mêmes règles que `StoreTaskRequest`, avec `sometimes|required` sur `title` (obligatoire seulement s'il est présent dans le body)
+- Mêmes règles que `StoreTaskRequest`, avec `sometimes|required` sur `title`
 
 ---
 
@@ -189,7 +164,7 @@ Contrôleur API resource :
 
 | Méthode | Comportement |
 |---------|--------------|
-| `index()` | Liste paginée (10 par page), filtrable par `?status=` |
+| `index()` | Liste paginée (10/page), filtrable par `?status=` |
 | `store()` | Crée une tâche, retourne JSON **201 Created** |
 | `show()` | Retourne une tâche via **route model binding** |
 | `update()` | Met à jour et retourne la tâche modifiée |
@@ -207,7 +182,127 @@ Insère 3 tâches de démonstration :
 
 ---
 
-## Exemples de requêtes
+# Exercice 2 — Composants Blade UI
+
+> **Commit :** `ff6d457` — `feat: add reusable UI components and demo page`
+
+Création de **composants Blade réutilisables** (Alert, Button, Card, Badge) stylés avec **Tailwind CSS** (CDN), deux layouts (`app-layout`, `guest-layout`) et une page de démonstration.
+
+## Commandes (Exo 2)
+
+| Commande | Rôle |
+|----------|------|
+| `php artisan make:component Alert` | Classe PHP + vue Blade pour `<x-alert>` |
+| `php artisan make:component Button` | Classe PHP + vue Blade pour `<x-button>` |
+| `php artisan make:component Card` | Classe PHP + vue Blade pour `<x-card>` |
+| *(manuel)* `resources/views/components/badge.blade.php` | Composant **anonyme** Blade (sans classe PHP) |
+| *(manuel)* `resources/views/components/app-layout.blade.php` | Layout principal avec navbar |
+| *(manuel)* `resources/views/components/guest-layout.blade.php` | Layout centré pour pages invitées |
+| *(manuel)* `resources/views/components-demo.blade.php` | Page de démonstration |
+| `php artisan serve` | Lancer le serveur pour voir `/components-demo` |
+| `php artisan route:list --path=components` | Vérifier la route de démo |
+
+## Page de démonstration
+
+Accessible à : **`http://127.0.0.1:8000/components-demo`**
+
+Affiche l'ensemble des composants dans un layout `app-layout` :
+
+```blade
+<x-app-layout title="Démo composants">
+    <x-alert type="success">...</x-alert>
+    <x-alert type="error">...</x-alert>
+    <x-card title="Ma première card">
+        <x-badge color="green">Actif</x-badge>
+        <x-button variant="primary">Valider</x-button>
+        <x-button variant="danger">Supprimer</x-button>
+    </x-card>
+</x-app-layout>
+```
+
+## Fichiers du commit `ff6d457`
+
+### `app/View/Components/Alert.php`
+
+Classe PHP du composant `<x-alert>`. Accepte une prop publique `$type` (défaut : `success`). Valeurs possibles : `success`, `error`, `warning`. Délègue le rendu à `resources/views/components/alert.blade.php`.
+
+---
+
+### `app/View/Components/Button.php`
+
+Classe PHP du composant `<x-button>`. Props :
+
+- `$variant` (défaut : `primary`) — `primary`, `danger`, `secondary`
+- `$href` (optionnel) — si renseigné, rend un `<a>`, sinon un `<button>`
+
+Délègue le rendu à `resources/views/components/button.blade.php`.
+
+---
+
+### `app/View/Components/Card.php`
+
+Classe PHP du composant `<x-card>`. Accepte une prop `$title` optionnelle affichée en en-tête. Le contenu est injecté via `$slot`. Délègue le rendu à `resources/views/components/card.blade.php`.
+
+---
+
+### `resources/views/components/alert.blade.php`
+
+Vue Blade de l'alerte. Mappe `$type` vers des classes Tailwind (vert, rouge, jaune). Fusionne les classes via `$attributes->merge()`. Affiche le contenu passé en slot.
+
+---
+
+### `resources/views/components/button.blade.php`
+
+Vue Blade du bouton. Mappe `$variant` vers des classes Tailwind. Rend conditionnellement un lien (`<a>`) ou un bouton (`<button>`) selon la présence de `$href`.
+
+---
+
+### `resources/views/components/card.blade.php`
+
+Vue Blade de la carte. Conteneur blanc avec ombre et padding. Affiche un `<h3>` si `$title` est défini, puis le `$slot`.
+
+---
+
+### `resources/views/components/badge.blade.php`
+
+Composant Blade **anonyme** (pas de classe PHP). Déclare `@props(['color' => 'green'])`. Mappe `$color` vers des classes Tailwind (`green`, `red`, `blue`, `yellow`). Rendu en `<span>` arrondi.
+
+---
+
+### `resources/views/components/app-layout.blade.php`
+
+Layout principal de l'application :
+
+- HTML5 avec Tailwind CDN
+- Navbar avec nom de l'app et bouton déconnexion (`@auth`)
+- Zone `<main>` centrée (`max-w-5xl`) recevant le `$slot`
+- Prop `$title` pour le `<title>` de la page
+
+---
+
+### `resources/views/components/guest-layout.blade.php`
+
+Layout pour pages invitées (login, register…) :
+
+- HTML5 avec Tailwind CDN
+- Contenu centré verticalement dans une carte blanche (`max-w-md`)
+- Prop `$title` pour le `<title>` de la page
+
+---
+
+### `resources/views/components-demo.blade.php`
+
+Page de démonstration assemblant tous les composants. Utilise `<x-app-layout>` comme wrapper et montre les variantes d'alertes, badges, boutons et cards.
+
+---
+
+### `routes/web.php`
+
+Ajout de la route GET `/components-demo` qui retourne la vue `components-demo`. La route `/` existante (page welcome) est conservée.
+
+---
+
+# Exemples de requêtes API
 
 ```bash
 # Lister toutes les tâches
@@ -235,13 +330,14 @@ curl -X DELETE http://127.0.0.1:8000/api/tasks/1
 
 ---
 
-## Stack technique
+# Stack technique
 
 - **Laravel** 13.8
 - **PHP** 8.3
 - **Base de données** SQLite (`database/database.sqlite`)
-- **Validation** Form Requests Laravel
-- **ORM** Eloquent
+- **Validation** Form Requests Laravel (Exo 1)
+- **ORM** Eloquent (Exo 1)
+- **Composants Blade** + **Tailwind CSS** CDN (Exo 2)
 
 ---
 
