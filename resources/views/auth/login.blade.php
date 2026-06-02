@@ -1,3 +1,4 @@
+{{-- Vue login Fortify — formulaire de connexion web (session) --}}
 <x-guest-layout>
     <form method="POST" action="{{ route('login') }}" class="space-y-4">
         @csrf

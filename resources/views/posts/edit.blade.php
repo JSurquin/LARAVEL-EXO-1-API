@@ -1,3 +1,4 @@
+{{-- Formulaire d'édition d'article — PUT /posts/{post} --}}
 <x-app-layout>
     <form method="POST" action="{{ route('posts.update', $post) }}">
         @csrf @method('PUT')

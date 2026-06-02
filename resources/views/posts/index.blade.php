@@ -1,3 +1,4 @@
+{{-- Liste des articles — boutons modifier/supprimer selon PostPolicy (@can) --}}
 <x-app-layout>
     <a href="{{ route('posts.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded">Nouvel article</a>
     @foreach($posts as $post)

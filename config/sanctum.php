@@ -1,5 +1,8 @@
 <?php
 
+// Configuration Laravel Sanctum — auth API par tokens Bearer
+// Publié via : php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Laravel\Sanctum\Http\Middleware\AuthenticateSession;

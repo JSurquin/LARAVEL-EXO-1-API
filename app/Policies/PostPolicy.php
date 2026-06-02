@@ -4,61 +4,45 @@ namespace App\Policies;
 
 use App\Models\Post;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
+// Policy d'autorisation — règles d'accès CRUD sur les articles
 class PostPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
+    // Tout utilisateur authentifié peut voir la liste
     public function viewAny(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
+    // Tout utilisateur authentifié peut lire un article
     public function view(User $user, Post $post): bool
     {
         return true;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
+    // Tout utilisateur authentifié peut créer un article
     public function create(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
+    // Modification : auteur OU admin
     public function update(User $user, Post $post): bool
     {
         return $user->id === $post->user_id || $user->isAdmin();
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
+    // Suppression : auteur OU admin
     public function delete(User $user, Post $post): bool
     {
         return $user->id === $post->user_id || $user->isAdmin();
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Post $post): bool
     {
         return false;
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Post $post): bool
     {
         return false;

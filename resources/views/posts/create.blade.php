@@ -1,3 +1,4 @@
+{{-- Formulaire de création d'article — POST /posts --}}
 <x-app-layout>
     <form method="POST" action="{{ route('posts.store') }}">
         @csrf

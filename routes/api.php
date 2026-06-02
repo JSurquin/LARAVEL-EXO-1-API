@@ -5,11 +5,11 @@ use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 
-// Public : login → retourne un token
+// Route publique : login → retourne un token Sanctum
 Route::post('/auth/login', [AuthController::class, 'login']);
 
-// Protégées par token Bearer
+// Routes protégées par token Bearer (middleware auth:sanctum)
 Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('tasks', TaskController::class);
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::apiResource('tasks', TaskController::class); // CRUD tasks sécurisé
+    Route::post('/auth/logout', [AuthController::class, 'logout']); // Révoque le token
 });

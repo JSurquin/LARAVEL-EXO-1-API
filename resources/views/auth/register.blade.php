@@ -1,3 +1,4 @@
+{{-- Vue register Fortify — formulaire d'inscription web --}}
 <x-guest-layout>
     <form method="POST" action="{{ route('register') }}" class="space-y-4">
         @csrf

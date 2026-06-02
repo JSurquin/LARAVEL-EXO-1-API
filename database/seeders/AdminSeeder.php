@@ -2,22 +2,20 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 
+// Seeder admin — crée un compte administrateur de test
+// Commande : php artisan db:seed --class=AdminSeeder
 class AdminSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         User::create([
             'name'     => 'Admin',
             'email'    => 'admin@example.com',
-            'password' => 'password',
-            'role'     => 'admin',
+            'password' => 'password', // Hashé automatiquement via cast 'hashed'
+            'role'     => 'admin',    // Rôle admin pour tester PostPolicy
         ]);
     }
 }

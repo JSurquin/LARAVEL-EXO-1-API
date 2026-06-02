@@ -1,3 +1,4 @@
+{{-- Affichage d'un article — GET /posts/{post} --}}
 <x-app-layout>
     <h2 class="text-xl font-semibold">{{ $post->title }}</h2>
     <p class="text-sm text-gray-500">Par {{ $post->user->name }}</p>

@@ -1,5 +1,8 @@
 <?php
 
+// Configuration Laravel Fortify — auth web (login, register, reset password, 2FA, passkeys)
+// Publié via : php artisan vendor:publish --provider="Laravel\Fortify\FortifyServiceProvider"
+
 use Laravel\Fortify\Features;
 
 return [
