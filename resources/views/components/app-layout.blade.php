@@ -4,6 +4,10 @@
 </head>
 @props(['header' => null])
 <nav class="bg-white border-b px-4 py-3 flex flex-wrap gap-4 items-center">
+@if(auth()->user()?->isAdmin())
+    <a href="{{ route('newsletters.index') }}">Newsletters</a>
+@endif
+
     @auth
         {{-- Liens visibles uniquement si connecté --}}
         <a href="{{ route('dashboard') }}">Dashboard</a>
