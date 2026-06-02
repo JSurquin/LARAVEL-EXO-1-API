@@ -19,7 +19,7 @@
         <a href="{{ route('register') }}">Inscription</a>
     @endauth
 </nav>
-<main class="max-w-5xl mx-auto p-6">
+<main class="max-w-5xl mx-auto p-6 {{ session('theme', 'light') === 'dark' ? 'bg-gray-900 text-white' : '' }}">
     @isset($header)<h1 class="text-xl font-semibold mb-4">{{ $header }}</h1>@endisset
     {{ $slot }}
 </main>
