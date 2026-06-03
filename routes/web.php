@@ -30,6 +30,9 @@ Route::post('/preferences', [PreferenceController::class, 'store'])->name('prefe
 Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
 Route::post('/cache/flush', [StatsController::class, 'flush'])->name('cache.flush')->middleware('auth');
 
+// Exo 5 — newsletters : liste (GET /newsletters), formulaire (GET /newsletters/create), création (POST /newsletters)
+// Limité aux actions index/create/store (pas d'édition ni de suppression)
+// Protégé par auth : seul un utilisateur connecté peut créer une newsletter
 Route::resource('newsletters', NewsletterController::class)
     ->only(['index', 'create', 'store'])
     ->middleware(['auth']);

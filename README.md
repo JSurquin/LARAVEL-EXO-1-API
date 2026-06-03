@@ -1,6 +1,6 @@
 # Laravel App — Corrections
 
-Projet Laravel 13 regroupant **quatre exercices** distincts, chacun identifié par son commit Git.
+Projet Laravel 13 regroupant **cinq exercices** distincts, chacun identifié par son commit Git.
 
 | Exercice | Commit | Message |
 |----------|--------|---------|
@@ -8,6 +8,7 @@ Projet Laravel 13 regroupant **quatre exercices** distincts, chacun identifié p
 | **Exercice 2** — Composants Blade UI | [`ff6d457`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/ff6d457) | `feat: add reusable UI components and demo page` |
 | **Exercice 3** — Auth & Autorisation | [`cbcd333`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/cbcd333) | `feat: integrate Laravel Fortify and Sanctum for user authentication and authorization` |
 | **Exercice 4** — Cache & Sessions Redis | [`ad8e8c3`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/ad8e8c3) | `feat: add user preferences and statistics features` |
+| **Exercice 5** — Newsletter / Queue / Horizon | [`0070dc3`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/0070dc3) | `feat: implement newsletter management system` |
 
 > Correctif migration doublon Sanctum : [`73a4cec`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/73a4cec) — `fix: remove duplicate migration for sanctum`
 
@@ -24,6 +25,7 @@ Projet Laravel 13 regroupant **quatre exercices** distincts, chacun identifié p
 | **2** | Composants UI | Blade `<x-alert>`, `<x-button>`, `<x-card>`, `<x-badge>`, page `/components-demo` |
 | **3** | Auth | Fortify (web), Sanctum (API), rôles, `PostPolicy`, CRUD `/posts` |
 | **4** | Cache & sessions | Redis (`CACHE_STORE` + `SESSION_DRIVER`), stats en cache, préférences utilisateur |
+| **5** | Newsletter / Queue | Mailable `NewsletterMail`, Job `SendNewsletterJob`, Horizon, Notification admin |
 
 ---
 
@@ -35,6 +37,7 @@ Projet Laravel 13 regroupant **quatre exercices** distincts, chacun identifié p
 - [Exercice 2 — Composants Blade UI](#exercice-2--composants-blade-ui)
 - [Exercice 3 — Auth & Autorisation](#exercice-3--auth--autorisation)
 - [Exercice 4 — Cache & Sessions Redis](#exercice-4--cache--sessions-redis)
+- [Exercice 5 — Newsletter / Queue / Horizon](#exercice-5--newsletter--queue--horizon)
 - [Exemples de requêtes API](#exemples-de-requêtes-api)
 - [Stack technique](#stack-technique)
 
@@ -45,7 +48,8 @@ Projet Laravel 13 regroupant **quatre exercices** distincts, chacun identifié p
 - PHP **8.3+**
 - Composer
 - Extension PHP `sqlite3`
-- **Redis** (Exo 4) — `brew install redis` puis `brew services start redis`
+- **Redis** (Exo 4 & 5) — `brew install redis` puis `brew services start redis`
+- **Laravel Horizon** (Exo 5) — `composer require laravel/horizon`
 
 ---
 
@@ -64,9 +68,15 @@ touch database/database.sqlite
 # QUEUE_CONNECTION=redis
 
 php artisan migrate
-php artisan db:seed --class=TaskSeeder    # Exo 1 — optionnel
-php artisan db:seed --class=AdminSeeder   # Exo 3 — compte admin
+php artisan db:seed --class=TaskSeeder       # Exo 1 — optionnel
+php artisan db:seed --class=AdminSeeder      # Exo 3 — compte admin
+php artisan db:seed --class=SubscriberSeeder # Exo 5 — abonnés de démo (facultatif)
 php artisan serve
+
+# Exo 5 — lancer le worker de queue (dans un terminal séparé)
+php artisan queue:work
+# OU démarrer Horizon (dashboard de monitoring des queues)
+php artisan horizon
 ```
 
 | Ressource | URL |
@@ -79,6 +89,8 @@ php artisan serve
 | Articles (Exo 3) | `http://127.0.0.1:8000/posts` |
 | Statistiques (Exo 4) | `http://127.0.0.1:8000/stats` |
 | Préférences (Exo 4) | `http://127.0.0.1:8000/preferences` |
+| Newsletters (Exo 5) | `http://127.0.0.1:8000/newsletters` |
+| Horizon — dashboard queues (Exo 5) | `http://127.0.0.1:8000/horizon` |
 
 **Compte admin de test** (via `AdminSeeder`) : `admin@example.com` / `password`
 
@@ -506,6 +518,124 @@ Migration doublon **supprimée** — une seule table `personal_access_tokens` su
 
 ---
 
+# Exercice 5 — Newsletter / Queue / Horizon
+
+> **Commit :** `0070dc3` — `feat: implement newsletter management system`
+
+Système d'envoi de **newsletters asynchrone** via la **queue Redis** et **Laravel Horizon** :
+
+1. L'admin remplit un formulaire (sujet + corps) → la newsletter est créée en base
+2. Un **Job** (`SendNewsletterJob`) est dispatché en queue Redis
+3. Le **worker** (Horizon) consomme le job : envoie un e-mail à chaque abonné via `NewsletterMail`
+4. Une **Notification** (`NewsletterSentNotification`) est envoyée à l'admin à la fin
+
+## Objectifs pédagogiques
+
+- Comprendre la différence **synchrone** (traitement immédiat) vs **asynchrone** (queue)
+- Utiliser un **Mailable** pour encapsuler un e-mail réutilisable
+- Utiliser un **Job** avec `ShouldQueue` pour l'envoi en arrière-plan
+- Utiliser le système de **Notifications** Laravel pour alerter un utilisateur
+- Monitorer les jobs avec **Laravel Horizon** (tableau de bord Redis)
+
+## Configuration `.env` (Exo 5)
+
+| Variable | Valeur | Rôle |
+|----------|--------|------|
+| `QUEUE_CONNECTION` | `redis` | Jobs envoyés dans la queue Redis |
+| `MAIL_MAILER` | `log` *(dev)* ou `smtp` | Backend d'envoi d'e-mails |
+| `REDIS_CLIENT` | `predis` | Client PHP Redis (partagé avec Exo 4) |
+
+## Commandes (Exo 5)
+
+| Commande | Rôle |
+|----------|------|
+| `php artisan make:model Newsletter -m` | Modèle + migration table `newsletters` |
+| `php artisan make:model Subscriber -m` | Modèle + migration table `subscribers` |
+| `php artisan make:mail NewsletterMail` | Classe Mailable pour l'e-mail newsletter |
+| `php artisan make:job SendNewsletterJob` | Job asynchrone d'envoi |
+| `php artisan make:notification NewsletterSentNotification` | Notification de confirmation admin |
+| `php artisan make:controller NewsletterController` | Contrôleur (index / create / store) |
+| `composer require laravel/horizon` | Installe Horizon (dashboard queues Redis) |
+| `php artisan horizon:install` | Publie les assets et la config Horizon |
+| `php artisan migrate` | Crée les tables `newsletters` et `subscribers` |
+| `php artisan queue:work` | Lance un worker simple (sans Horizon) |
+| `php artisan horizon` | Lance le supervisor Horizon |
+
+## Routes web (Exo 5)
+
+| Méthode | URL | Auth | Action |
+|---------|-----|------|--------|
+| `GET` | `/newsletters` | Oui | Liste des newsletters + statut d'envoi |
+| `GET` | `/newsletters/create` | Oui | Formulaire de création |
+| `POST` | `/newsletters` | Oui | Valide, crée en BDD, dispatche le job |
+| `GET` | `/horizon` | Admin | Dashboard de monitoring des queues |
+
+## Flux d'envoi
+
+```text
+Formulaire POST /newsletters
+  → NewsletterController@store
+  → Newsletter::create(['subject', 'body'])       — enregistrement en BDD (sent_at = null)
+  → SendNewsletterJob::dispatch($newsletter, $admin) — job poussé dans la queue Redis
+
+Worker (php artisan horizon / queue:work)
+  → SendNewsletterJob::handle()
+    → newsletter->refresh()                        — recharge pour vérifier idempotence
+    → Subscriber::all()                            — récupère tous les abonnés
+    → foreach → Mail::to()->send(NewsletterMail)   — e-mail individuel par abonné
+    → newsletter->update(['sent_at' => now()])     — marque comme envoyée
+    → admin->notify(NewsletterSentNotification)    — e-mail de confirmation à l'admin
+
+Vue /newsletters (rechargée)
+  → sent_at renseigné → "✓ Envoyée le ..."
+```
+
+## Fichiers du commit `0070dc3`
+
+| Fichier | Rôle |
+|---------|------|
+| `app/Models/Newsletter.php` | Modèle Eloquent — `subject`, `body`, `sent_at` (cast datetime) |
+| `app/Models/Subscriber.php` | Modèle Eloquent — `email` (unique), `name` |
+| `database/migrations/..._create_newsletters_table.php` | Table `newsletters` |
+| `database/migrations/..._create_subscribers_table.php` | Table `subscribers` |
+| `app/Mail/NewsletterMail.php` | Mailable — enveloppe (sujet) + vue `emails.newsletter` |
+| `app/Jobs/SendNewsletterJob.php` | Job queue — envoi à tous les abonnés + notification admin |
+| `app/Notifications/NewsletterSentNotification.php` | Notification mail envoyée à l'admin |
+| `app/Http/Controllers/NewsletterController.php` | Contrôleur — index / create / store |
+| `resources/views/newsletters/index.blade.php` | Liste newsletters avec statut envoi |
+| `resources/views/newsletters/create.blade.php` | Formulaire sujet + corps |
+| `resources/views/emails/newsletter.blade.php` | Template HTML de l'e-mail abonné |
+| `routes/web.php` | Route resource `newsletters` (index / create / store) protégée par auth |
+
+### Détail : `SendNewsletterJob.php`
+
+| Propriété / Méthode | Comportement |
+|---------------------|--------------|
+| `$tries = 3` | Relance automatique du job jusqu'à 3 fois en cas d'erreur |
+| `newsletter->refresh()` | Recharge le modèle depuis la BDD (idempotence — évite les doublons) |
+| Guard `if ($newsletter->sent_at)` | Court-circuite si déjà envoyée (rejeu de job, double dispatch) |
+| `Subscriber::all()` | Charge tous les abonnés en mémoire pour l'itération |
+| `Mail::to()->send(NewsletterMail)` | Envoi synchrone dans le contexte du worker |
+| `newsletter->update(['sent_at'])` | Marque l'envoi comme terminé avec horodatage |
+| `admin->notify(...)` | Déclenche `NewsletterSentNotification` vers l'admin |
+
+### Détail : `NewsletterMail.php`
+
+| Méthode | Comportement |
+|---------|--------------|
+| `envelope()` | Sujet de l'e-mail = `$newsletter->subject` |
+| `content()` | Vue `emails.newsletter` + variable `$newsletter` passée à Blade |
+| `attachments()` | Aucune pièce jointe (tableau vide) |
+
+### Détail : `NewsletterSentNotification.php`
+
+| Canal | Comportement |
+|-------|--------------|
+| `via()` | `['mail']` — envoyée uniquement par e-mail |
+| `toMail()` | Sujet fixe + ligne résumant le titre et le nombre d'abonnés touchés |
+
+---
+
 # Exemples de requêtes API
 
 ```bash
@@ -543,6 +673,10 @@ curl -X POST http://127.0.0.1:8000/api/auth/logout \
 - **Policies** — autorisation par rôle et propriétaire (Exo 3)
 - **Redis** + **Predis** — cache applicatif et sessions (Exo 4)
 - **Cache::remember** / **Cache::forget** — statistiques mises en cache (Exo 4)
+- **Laravel Horizon** — dashboard de monitoring des queues Redis (Exo 5)
+- **Mailable** (`NewsletterMail`) — e-mail encapsulé avec vue Blade dédiée (Exo 5)
+- **Jobs / Queue** (`SendNewsletterJob`) — traitement asynchrone via queue Redis (Exo 5)
+- **Notifications** (`NewsletterSentNotification`) — confirmation admin après envoi (Exo 5)
 
 ---
 
