@@ -1,6 +1,9 @@
-.git
-node_modules
-vendor
-.env
-storage/logs/*.log
-.phpunit.result.cache
+# Exo 7 — Fichiers exclus du contexte de build Docker (COPY . . dans le Dockerfile)
+# Réduit la taille de l'image et accélère le build en ignorant le superflu
+
+.git                  # Historique Git — inutile dans l'image de production
+node_modules          # Dépendances front (Vite/npm) — reconstruites si besoin
+vendor                # Dépendances Composer — réinstallées via RUN composer install
+.env                  # Secrets locaux — injectés via env_file: .env dans docker-compose (pas dans l'image)
+storage/logs/*.log    # Fichiers de log volumineux et spécifiques à la machine hôte
+.phpunit.result.cache # Cache PHPUnit — pertinent uniquement en local / CI

@@ -1,6 +1,6 @@
 # Laravel App — Corrections
 
-Projet Laravel 13 regroupant **six exercices** distincts, chacun identifié par son commit Git.
+Projet Laravel 13 regroupant **sept exercices** distincts, chacun identifié par son commit Git.
 
 | Exercice | Commit | Message |
 |----------|--------|---------|
@@ -10,6 +10,7 @@ Projet Laravel 13 regroupant **six exercices** distincts, chacun identifié par 
 | **Exercice 4** — Cache & Sessions Redis | [`ad8e8c3`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/ad8e8c3) | `feat: add user preferences and statistics features` |
 | **Exercice 5** — Newsletter / Queue / Horizon | [`0070dc3`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/0070dc3) | `feat: implement newsletter management system` |
 | **Exercice 6** — Tests Pest & Dusk | [`9f4277e`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/9f4277e) | `feat: set up testing environment with Dusk and Pest` |
+| **Exercice 7** — Docker | [`6beacf4`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/6beacf4) | `feat: set up Docker environment for Laravel application` |
 
 > Correctif migration doublon Sanctum : [`73a4cec`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/73a4cec) — `fix: remove duplicate migration for sanctum`
 
@@ -28,6 +29,7 @@ Projet Laravel 13 regroupant **six exercices** distincts, chacun identifié par 
 | **4** | Cache & sessions | Redis (`CACHE_STORE` + `SESSION_DRIVER`), stats en cache, préférences utilisateur |
 | **5** | Newsletter / Queue | Mailable `NewsletterMail`, Job `SendNewsletterJob`, Horizon, Notification admin |
 | **6** | Tests Pest & Dusk | Tests Feature (API, Policy, Job), tests Browser (login Fortify), factories, `.env.dusk.local` |
+| **7** | Docker | `docker-compose` : PHP-FPM, Nginx, MySQL, Redis, Mailpit, worker `queue:work` |
 
 ---
 
@@ -41,6 +43,7 @@ Projet Laravel 13 regroupant **six exercices** distincts, chacun identifié par 
 - [Exercice 4 — Cache & Sessions Redis](#exercice-4--cache--sessions-redis)
 - [Exercice 5 — Newsletter / Queue / Horizon](#exercice-5--newsletter--queue--horizon)
 - [Exercice 6 — Tests Pest & Dusk](#exercice-6--tests-pest--dusk)
+- [Exercice 7 — Docker](#exercice-7--docker)
 - [Exemples de requêtes API](#exemples-de-requêtes-api)
 - [Stack technique](#stack-technique)
 
@@ -55,6 +58,7 @@ Projet Laravel 13 regroupant **six exercices** distincts, chacun identifié par 
 - **Laravel Horizon** (Exo 5) — `composer require laravel/horizon`
 - **Google Chrome** + **ChromeDriver** (Exo 6) — pour les tests Browser Dusk
 - **Pest** + **Laravel Dusk** (Exo 6) — `composer require pestphp/pest pestphp/pest-plugin-laravel laravel/dusk --dev`
+- **Docker** + **Docker Compose** (Exo 7) — conteneurisation complète de l'application
 
 ---
 
@@ -89,6 +93,30 @@ php artisan dusk              # Lance les tests Browser (serveur + ChromeDriver 
 php artisan dusk:chrome-driver --detect  # Installe ChromeDriver correspondant à votre Chrome
 ```
 
+### Installation Docker (Exo 7)
+
+```bash
+cp .env.example .env
+# Adapter .env pour Docker (noms de services = hôtes réseau interne) :
+# DB_CONNECTION=mysql
+# DB_HOST=db
+# DB_PORT=3306
+# DB_DATABASE=laravel
+# DB_USERNAME=laravel
+# DB_PASSWORD=secret
+# REDIS_HOST=redis
+# MAIL_MAILER=smtp
+# MAIL_HOST=mailpit
+# MAIL_PORT=1025
+# QUEUE_CONNECTION=redis
+
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+docker compose exec app php artisan db:seed --class=AdminSeeder
+```
+
 | Ressource | URL |
 |-----------|-----|
 | API Tasks | `http://127.0.0.1:8000/api/tasks` *(protégé depuis Exo 3)* |
@@ -101,6 +129,8 @@ php artisan dusk:chrome-driver --detect  # Installe ChromeDriver correspondant �
 | Préférences (Exo 4) | `http://127.0.0.1:8000/preferences` |
 | Newsletters (Exo 5) | `http://127.0.0.1:8000/newsletters` |
 | Horizon — dashboard queues (Exo 5) | `http://127.0.0.1:8000/horizon` |
+| Application (Exo 7 — Docker) | `http://localhost:8080` |
+| Mailpit — e-mails capturés (Exo 7) | `http://localhost:8025` |
 
 **Compte admin de test** (via `AdminSeeder`) : `admin@example.com` / `password`
 
@@ -783,6 +813,130 @@ User::factory()->create(['password' => 'password'])
 
 ---
 
+# Exercice 7 — Docker
+
+> **Commit :** `6beacf4` — `feat: set up Docker environment for Laravel application`
+
+Conteneurisation complète de l'application Laravel avec **Docker Compose** : six services orchestrés sur un réseau interne `laravel`, remplaçant l'installation locale (PHP, SQLite, Redis brew) par un environnement reproductible.
+
+## Objectifs pédagogiques
+
+- Comprendre l'architecture **Nginx + PHP-FPM** (reverse proxy → FastCGI)
+- Séparer les responsabilités en **services** (app, base, cache, mail, worker)
+- Utiliser les **noms de service** comme hôtes (`DB_HOST=db`, `REDIS_HOST=redis`)
+- Persister les données MySQL via un **volume nommé** `db_data`
+- Capturer les e-mails en dev avec **Mailpit** (Exo 5 newsletters)
+- Lancer le **worker de queue** dans un conteneur dédié
+
+## Architecture des services
+
+```text
+Navigateur → localhost:8080 → [nginx:80]
+                                  ↓ fastcgi_pass app:9000
+                              [app — PHP 8.4-FPM / Laravel]
+                                  ↓                    ↓
+                            [db — MySQL 8.4]      [redis — cache/sessions/queue]
+                                  ↑
+                            [queue — php artisan queue:work]
+                            
+[E-mails] Laravel → mailpit:1025 → UI http://localhost:8025
+```
+
+| Service | Image / build | Rôle | Port exposé |
+|---------|---------------|------|-------------|
+| `app` | `Dockerfile` (PHP 8.4-FPM) | Code Laravel, `php-fpm` | — (interne 9000) |
+| `nginx` | `nginx:alpine` | Serveur web, `public/` | **8080** → 80 |
+| `db` | `mysql:8.4` | Base MySQL persistante | — (interne 3306) |
+| `redis` | `redis:7-alpine` | Cache, sessions, queues (Exo 4/5) | — |
+| `mailpit` | `axllent/mailpit` | Capture SMTP dev (Exo 5) | **8025** (UI) |
+| `queue` | même `Dockerfile` | Worker `queue:work` | — |
+
+## Configuration `.env` (Exo 7)
+
+| Variable | Valeur Docker | Rôle |
+|----------|---------------|------|
+| `DB_CONNECTION` | `mysql` | Pilote BDD (remplace SQLite local) |
+| `DB_HOST` | `db` | Nom du service MySQL sur le réseau `laravel` |
+| `DB_PORT` | `3306` | Port MySQL interne |
+| `DB_DATABASE` | `laravel` | Doit correspondre à `MYSQL_DATABASE` dans compose |
+| `DB_USERNAME` / `DB_PASSWORD` | `laravel` / `secret` | Utilisateur applicatif MySQL |
+| `REDIS_HOST` | `redis` | Nom du service Redis |
+| `REDIS_CLIENT` | `phpredis` ou `predis` | Client Redis (extension installée dans Dockerfile) |
+| `QUEUE_CONNECTION` | `redis` | Files d'attente consommées par le conteneur `queue` |
+| `MAIL_HOST` | `mailpit` | Serveur SMTP Mailpit (port 1025 interne) |
+| `MAIL_PORT` | `1025` | Port SMTP Mailpit |
+| `SESSION_DRIVER` / `CACHE_STORE` | `redis` | Sessions et cache (Exo 4) |
+
+## Commandes (Exo 7)
+
+| Commande | Rôle |
+|----------|------|
+| `docker compose up -d --build` | Construit l'image et démarre tous les services en arrière-plan |
+| `docker compose down` | Arrête et supprime les conteneurs (volume `db_data` conservé) |
+| `docker compose down -v` | Arrête + supprime les volumes (reset BDD) |
+| `docker compose exec app composer install` | Installe `vendor/` dans le conteneur (volume écrase le build) |
+| `docker compose exec app php artisan key:generate` | Génère `APP_KEY` |
+| `docker compose exec app php artisan migrate` | Applique les migrations sur MySQL |
+| `docker compose exec app php artisan db:seed --class=AdminSeeder` | Compte admin de test |
+| `docker compose logs -f queue` | Suit les logs du worker de queue |
+| `docker compose ps` | État des conteneurs |
+
+## Fichiers du commit `6beacf4`
+
+| Fichier | Rôle |
+|---------|------|
+| `Dockerfile` | Image PHP 8.4-FPM : extensions (pdo_mysql, redis, gd…), Composer, `php-fpm` |
+| `docker-compose.yml` | Définition des 6 services, volumes, réseau, healthcheck MySQL |
+| `docker/nginx/default.conf` | Vhost Nginx : `try_files`, FastCGI vers `app:9000` |
+| `docker/php/local.ini` | Limites PHP : upload 50M, mémoire 256M |
+| `.dockerignore` | Exclut `.git`, `vendor`, `.env`, logs du contexte de build |
+
+### Détail : `Dockerfile`
+
+| Étape | Comportement |
+|-------|--------------|
+| `FROM php:8.4-fpm` | Image officielle PHP en mode FastCGI |
+| `docker-php-ext-install` | `pdo_mysql`, `zip`, `gd`, `opcache`, `mbstring`, `pcntl` |
+| `pecl install redis` | Extension Redis native (cache/queue) |
+| `COPY --from=composer` | Binaire Composer disponible dans le conteneur |
+| `composer install --no-dev` | Dépendances prod au build (réinstallées en dev via volume) |
+| `USER www-data` | php-fpm non-root |
+| `CMD php-fpm` | Écoute sur le port 9000 |
+
+### Détail : `docker-compose.yml`
+
+| Service | Point clé |
+|---------|-----------|
+| `app` | `depends_on: db: condition: service_healthy` — attend MySQL |
+| `nginx` | Volume `default.conf` + code source monté |
+| `db` | Volume `db_data` + variables `MYSQL_*` depuis `.env` |
+| `queue` | Même image que `app`, commande `queue:work --tries=3` |
+| `mailpit` | Port 8025 pour consulter les e-mails envoyés |
+
+### Détail : `docker/nginx/default.conf`
+
+- `root /var/www/html/public` — point d'entrée Laravel
+- `try_files $uri $uri/ /index.php?$query_string` — routing front controller
+- `fastcgi_pass app:9000` — liaison vers PHP-FPM
+
+## Premier lancement (checklist)
+
+1. Configurer `.env` avec les hôtes Docker (`db`, `redis`, `mailpit`)
+2. `docker compose up -d --build`
+3. `docker compose exec app composer install` *(le volume local écrase `vendor/` du build)*
+4. `docker compose exec app php artisan key:generate && php artisan migrate`
+5. Ouvrir `http://localhost:8080` — login admin
+6. Envoyer une newsletter → vérifier l'e-mail dans `http://localhost:8025`
+7. Le conteneur `queue` traite les jobs sans `php artisan queue:work` local
+
+## Dépendances des exercices précédents
+
+- **Exo 4** — Redis pour sessions/cache (`REDIS_HOST=redis`)
+- **Exo 5** — Queue Redis + e-mails (worker `queue`, Mailpit)
+- **Exo 3+** — MySQL remplace SQLite ; migrations Fortify/Sanctum/posts/newsletters
+
+---
+
 # Exemples de requêtes API
 
 ```bash
@@ -828,6 +982,8 @@ curl -X POST http://127.0.0.1:8000/api/auth/logout \
 - **Laravel Dusk** — tests Browser Chrome (login Fortify, assertions DOM) (Exo 6)
 - **Factories Eloquent** — données de test reproductibles (Exo 6)
 - **Mail::fake** / **Notification::fake** — tests du job newsletter sans envoi réel (Exo 6)
+- **Docker Compose** — PHP-FPM, Nginx, MySQL, Redis, Mailpit, worker queue (Exo 7)
+- **Mailpit** — capture et prévisualisation des e-mails en développement (Exo 7)
 
 ---
 
