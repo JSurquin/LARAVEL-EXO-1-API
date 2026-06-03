@@ -1,50 +1,46 @@
 <?php
 
+// Exo 6 — configuration globale Pest : lie les tests Browser à DuskTestCase
 pest()->extend(Tests\DuskTestCase::class)
-//  ->use(Illuminate\Foundation\Testing\DatabaseMigrations::class)
-    ->in('Browser');
+//  ->use(Illuminate\Foundation\Testing\DatabaseMigrations::class) // Optionnel : migrations avant chaque test Dusk
+    ->in('Browser'); // Applique DuskTestCase à tous les fichiers du dossier tests/Browser/
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase; // Réinitialise la BDD SQLite en mémoire entre chaque test Feature
+use Tests\TestCase;                                 // Classe de base Laravel (HTTP, facades, helpers $this->getJson, etc.)
 
 /*
 |--------------------------------------------------------------------------
-| Test Case
+| Test Case — tests Feature (Pest)
 |--------------------------------------------------------------------------
 |
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
+| Les tests dans tests/Feature/ héritent de TestCase + RefreshDatabase :
+| chaque test repart d'une base vide (migrations rejouées automatiquement).
 |
 */
 
 pest()->extend(TestCase::class)
-    ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->use(RefreshDatabase::class) // Vide et recrée les tables avant chaque test Feature
+    ->in('Feature');              // Applique cette config à tests/Feature/*.php
 
 /*
 |--------------------------------------------------------------------------
-| Expectations
+| Expectations personnalisées (optionnel)
 |--------------------------------------------------------------------------
 |
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
+| Permet d'étendre l'API expect() de Pest avec des assertions réutilisables.
 |
 */
 
 expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
+    return $this->toBe(1); // Exemple : expect($x)->toBeOne() équivaut à expect($x)->toBe(1)
 });
 
 /*
 |--------------------------------------------------------------------------
-| Functions
+| Helpers globaux (optionnel)
 |--------------------------------------------------------------------------
 |
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
+| Fonctions globales partagées entre tous les fichiers de test.
 |
 */
 

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 // Modèle Eloquent pour les articles (posts)
 class Post extends Model
 {
-    use HasFactory;
+    use HasFactory; // Exo 6 — active Post::factory() pour les tests Pest (PostPolicyTest)
 
     // Champs autorisés en assignation de masse
     protected $fillable = ['title', 'body', 'user_id'];

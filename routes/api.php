@@ -15,5 +15,6 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// pour les tests feature
+// Exo 6 — route tasks SANS auth:sanctum pour les tests Feature Pest (TaskApiTest)
+// En production réelle, seule la route du groupe auth:sanctum ci-dessus doit être utilisée
 Route::apiResource('tasks', TaskController::class);

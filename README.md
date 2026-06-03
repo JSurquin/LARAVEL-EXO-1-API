@@ -1,6 +1,6 @@
 # Laravel App — Corrections
 
-Projet Laravel 13 regroupant **cinq exercices** distincts, chacun identifié par son commit Git.
+Projet Laravel 13 regroupant **six exercices** distincts, chacun identifié par son commit Git.
 
 | Exercice | Commit | Message |
 |----------|--------|---------|
@@ -9,6 +9,7 @@ Projet Laravel 13 regroupant **cinq exercices** distincts, chacun identifié par
 | **Exercice 3** — Auth & Autorisation | [`cbcd333`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/cbcd333) | `feat: integrate Laravel Fortify and Sanctum for user authentication and authorization` |
 | **Exercice 4** — Cache & Sessions Redis | [`ad8e8c3`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/ad8e8c3) | `feat: add user preferences and statistics features` |
 | **Exercice 5** — Newsletter / Queue / Horizon | [`0070dc3`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/0070dc3) | `feat: implement newsletter management system` |
+| **Exercice 6** — Tests Pest & Dusk | [`9f4277e`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/9f4277e) | `feat: set up testing environment with Dusk and Pest` |
 
 > Correctif migration doublon Sanctum : [`73a4cec`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/73a4cec) — `fix: remove duplicate migration for sanctum`
 
@@ -26,6 +27,7 @@ Projet Laravel 13 regroupant **cinq exercices** distincts, chacun identifié par
 | **3** | Auth | Fortify (web), Sanctum (API), rôles, `PostPolicy`, CRUD `/posts` |
 | **4** | Cache & sessions | Redis (`CACHE_STORE` + `SESSION_DRIVER`), stats en cache, préférences utilisateur |
 | **5** | Newsletter / Queue | Mailable `NewsletterMail`, Job `SendNewsletterJob`, Horizon, Notification admin |
+| **6** | Tests Pest & Dusk | Tests Feature (API, Policy, Job), tests Browser (login Fortify), factories, `.env.dusk.local` |
 
 ---
 
@@ -38,6 +40,7 @@ Projet Laravel 13 regroupant **cinq exercices** distincts, chacun identifié par
 - [Exercice 3 — Auth & Autorisation](#exercice-3--auth--autorisation)
 - [Exercice 4 — Cache & Sessions Redis](#exercice-4--cache--sessions-redis)
 - [Exercice 5 — Newsletter / Queue / Horizon](#exercice-5--newsletter--queue--horizon)
+- [Exercice 6 — Tests Pest & Dusk](#exercice-6--tests-pest--dusk)
 - [Exemples de requêtes API](#exemples-de-requêtes-api)
 - [Stack technique](#stack-technique)
 
@@ -50,6 +53,8 @@ Projet Laravel 13 regroupant **cinq exercices** distincts, chacun identifié par
 - Extension PHP `sqlite3`
 - **Redis** (Exo 4 & 5) — `brew install redis` puis `brew services start redis`
 - **Laravel Horizon** (Exo 5) — `composer require laravel/horizon`
+- **Google Chrome** + **ChromeDriver** (Exo 6) — pour les tests Browser Dusk
+- **Pest** + **Laravel Dusk** (Exo 6) — `composer require pestphp/pest pestphp/pest-plugin-laravel laravel/dusk --dev`
 
 ---
 
@@ -77,6 +82,11 @@ php artisan serve
 php artisan queue:work
 # OU démarrer Horizon (dashboard de monitoring des queues)
 php artisan horizon
+
+# Exo 6 — tests automatisés
+php artisan test              # Lance tous les tests Pest Feature (+ Unit)
+php artisan dusk              # Lance les tests Browser (serveur + ChromeDriver requis)
+php artisan dusk:chrome-driver --detect  # Installe ChromeDriver correspondant à votre Chrome
 ```
 
 | Ressource | URL |
@@ -636,6 +646,143 @@ Vue /newsletters (rechargée)
 
 ---
 
+# Exercice 6 — Tests Pest & Dusk
+
+> **Commit :** `9f4277e` — `feat: set up testing environment with Dusk and Pest`
+
+Mise en place d'une **suite de tests automatisés** couvrant les exercices précédents :
+
+1. **Pest (Feature)** — tests HTTP/API, policies et job newsletter (SQLite en mémoire, `RefreshDatabase`)
+2. **Laravel Dusk (Browser)** — tests end-to-end dans Chrome (login Fortify, page d'accueil)
+3. **Factories** — génération de données factices (`User`, `Task`, `Post`, `Subscriber`)
+
+## Objectifs pédagogiques
+
+- Écrire des tests **Feature** avec la syntaxe Pest (`it()`, `expect()`, `uses()`)
+- Tester une **API REST** sans token (route dédiée aux tests) via `getJson` / `postJson`
+- Tester une **Policy** avec `$user->can('update', $post)` et `expect()->toBeTrue()`
+- Tester un **Job** avec `Mail::fake()` et `Notification::fake()`
+- Automatiser un **parcours navigateur** avec Dusk (`visit`, `type`, `press`, `assertPathIs`)
+- Comprendre la différence **test unitaire/feature** (rapide, sans navigateur) vs **test browser** (lent, Chrome réel)
+
+## Configuration
+
+| Fichier | Rôle |
+|---------|------|
+| `phpunit.xml` | BDD SQLite `:memory:`, `QUEUE_CONNECTION=sync`, `MAIL_MAILER=array` pour les tests Feature |
+| `.env.dusk.local` | Environnement chargé par `php artisan dusk` (APP_URL, Redis, mail SMTP local) |
+| `tests/Pest.php` | Lie `Feature` → `TestCase` + `RefreshDatabase`, `Browser` → `DuskTestCase` |
+
+## Commandes (Exo 6)
+
+| Commande | Rôle |
+|----------|------|
+| `composer require pestphp/pest pestphp/pest-plugin-laravel --dev` | Installe Pest + plugin Laravel |
+| `composer require laravel/dusk --dev` | Installe Laravel Dusk |
+| `php artisan dusk:install` | Publie `DuskTestCase`, dossiers Browser, `.env.dusk.local` |
+| `php artisan dusk:chrome-driver --detect` | Installe ChromeDriver (version = Chrome installé) |
+| `php artisan make:factory PostFactory` | Factory articles (PostPolicyTest) |
+| `php artisan make:factory TaskFactory` | Factory tâches (TaskApiTest) |
+| `php artisan test` | Exécute les tests Pest Feature + Unit |
+| `php artisan test --filter=TaskApi` | Lance uniquement les tests dont le nom contient « TaskApi » |
+| `php artisan dusk` | Exécute les tests Browser (nécessite `php artisan serve` + ChromeDriver) |
+
+## Prérequis pour `php artisan dusk`
+
+1. Terminal 1 : `php artisan serve` (app sur `http://localhost:8000`)
+2. Terminal 2 : `php artisan dusk:chrome-driver` (ou `--detect` une fois)
+3. Terminal 3 : `php artisan dusk`
+
+Les captures d'écran et logs console sont stockés dans `tests/Browser/screenshots/` et `tests/Browser/console/`.
+
+## Tests Feature (Pest)
+
+| Fichier | Ce qui est testé | Exercice source |
+|---------|------------------|-----------------|
+| `tests/Feature/TaskApiTest.php` | CRUD `/api/tasks`, validation, filtre `?status=`, 404 | Exo 1 |
+| `tests/Feature/PostPolicyTest.php` | `PostPolicy` — auteur, tiers, admin (update/delete) | Exo 3 |
+| `tests/Feature/NewsletterJobTest.php` | `SendNewsletterJob` — mails, `sent_at`, notification admin | Exo 5 |
+
+### Route API dédiée aux tests
+
+Depuis l'**Exo 3**, `/api/tasks` est protégé par `auth:sanctum`. Pour tester l'API sans token, une **deuxième route** publique a été ajoutée dans `routes/api.php` (commentée « Exo 6 »). En production, seule la route du groupe `auth:sanctum` doit rester active.
+
+## Tests Browser (Dusk + Pest)
+
+| Fichier | Scénario |
+|---------|----------|
+| `tests/Browser/ExampleTest.php` | Visite `/` → assertSee `Laravel` |
+| `tests/Browser/LoginTest.php` | Login Fortify → redirection `/dashboard` |
+| `tests/DuskTestCase.php` | Démarre ChromeDriver, configure Chrome (headless) |
+| `tests/Browser/Pages/Page.php` | Page Object abstrait (raccourcis `@element`) |
+| `tests/Browser/Pages/HomePage.php` | Page Object page d'accueil |
+
+## Factories
+
+| Factory | Modèle | Usage principal |
+|---------|--------|-----------------|
+| `UserFactory` | `User` | Dusk login, PostPolicy, NewsletterJob (`role`, `password` en clair) |
+| `TaskFactory` | `Task` | TaskApiTest — statuts aléatoires, dates optionnelles |
+| `PostFactory` | `Post` | PostPolicyTest — `Post::factory()->for($user)` |
+| `SubscriberFactory` | `Subscriber` | NewsletterJobTest — `count(3)` abonnés |
+
+## Fichiers du commit `9f4277e`
+
+| Fichier | Rôle |
+|---------|------|
+| `tests/Pest.php` | Configuration globale Pest (Feature + Browser) |
+| `tests/DuskTestCase.php` | ChromeDriver + RemoteWebDriver (headless) |
+| `tests/Feature/TaskApiTest.php` | 8 tests API tasks |
+| `tests/Feature/PostPolicyTest.php` | 5 tests PostPolicy |
+| `tests/Feature/NewsletterJobTest.php` | 3 tests SendNewsletterJob (fakes Mail/Notification) |
+| `tests/Browser/ExampleTest.php` | Test Dusk page d'accueil |
+| `tests/Browser/LoginTest.php` | Test Dusk login Fortify |
+| `tests/Browser/Pages/Page.php` | Page Object de base |
+| `tests/Browser/Pages/HomePage.php` | Page Object accueil |
+| `database/factories/TaskFactory.php` | Données factices Task |
+| `database/factories/PostFactory.php` | Données factices Post |
+| `database/factories/UserFactory.php` | Données factices User (+ `role`) |
+| `database/factories/SubscriberFactory.php` | Données factices Subscriber *(utilisée par NewsletterJobTest)* |
+| `app/Models/Post.php` | Ajout trait `HasFactory` |
+| `routes/api.php` | Route `tasks` publique pour tests Feature |
+| `.env.dusk.local` | Variables d'environnement Dusk |
+| `composer.json` | `pestphp/pest`, `pestphp/pest-plugin-laravel`, `laravel/dusk` |
+
+### Détail : `TaskApiTest.php`
+
+| Test | Assertion clé |
+|------|---------------|
+| `lists tasks` | `assertJsonCount(5, 'data')` — pagination Laravel |
+| `creates a task` | `assertCreated()` + `assertDatabaseHas` |
+| `validates title on store` | `assertUnprocessable()` — corps vide |
+| `filters by status` | `?status=todo` → 3 résultats sur 5 tâches |
+
+### Détail : `NewsletterJobTest.php`
+
+| Test | Technique |
+|------|-----------|
+| `sends mail to subscribers` | `Mail::fake()` + `Mail::assertSent(NewsletterMail::class, 3)` |
+| `updates sent_at after job` | `expect($newsletter->fresh()->sent_at)->not->toBeNull()` |
+| `notifies admin after send` | `Notification::fake()` + `assertSentTo($admin, ...)` |
+
+### Détail : `LoginTest.php` (Dusk)
+
+```text
+User::factory()->create(['password' => 'password'])
+  → browse → visit('/login')
+  → type email + password
+  → press('Se connecter')
+  → assertPathIs('/dashboard')
+```
+
+## Dépendances des exercices précédents
+
+- **Exo 1** — modèle `Task`, routes `/api/tasks`, `TaskController`
+- **Exo 3** — `Post`, `PostPolicy`, `User` avec `role`, Fortify login `/login`
+- **Exo 5** — `SendNewsletterJob`, `NewsletterMail`, `NewsletterSentNotification`, `Subscriber`
+
+---
+
 # Exemples de requêtes API
 
 ```bash
@@ -677,6 +824,10 @@ curl -X POST http://127.0.0.1:8000/api/auth/logout \
 - **Mailable** (`NewsletterMail`) — e-mail encapsulé avec vue Blade dédiée (Exo 5)
 - **Jobs / Queue** (`SendNewsletterJob`) — traitement asynchrone via queue Redis (Exo 5)
 - **Notifications** (`NewsletterSentNotification`) — confirmation admin après envoi (Exo 5)
+- **Pest** — tests Feature avec syntaxe `it()` / `expect()` (Exo 6)
+- **Laravel Dusk** — tests Browser Chrome (login Fortify, assertions DOM) (Exo 6)
+- **Factories Eloquent** — données de test reproductibles (Exo 6)
+- **Mail::fake** / **Notification::fake** — tests du job newsletter sans envoi réel (Exo 6)
 
 ---
 
