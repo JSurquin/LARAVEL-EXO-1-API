@@ -11,7 +11,19 @@ Projet Laravel 13 regroupant **quatre exercices** distincts, chacun identifié p
 
 > Correctif migration doublon Sanctum : [`73a4cec`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/73a4cec) — `fix: remove duplicate migration for sanctum`
 
-> Commit initial du projet : `6c12af0` — `feat: first commit with implementation of basic api task`
+> Commit initial du projet : `6c12af0` — `feat: first commit with implementation of basic api task`  
+> Documentation Exo 4 (commentaires + README) : [`60084f6`](https://github.com/JSurquin/LARAVEL-EXO-1-API/commit/60084f6)
+
+---
+
+## Vue d'ensemble des corrections
+
+| # | Thème | Ce qui a été fait |
+|---|-------|-------------------|
+| **1** | API REST | CRUD `tasks` en JSON, validation, SQLite, routes `/api/tasks` |
+| **2** | Composants UI | Blade `<x-alert>`, `<x-button>`, `<x-card>`, `<x-badge>`, page `/components-demo` |
+| **3** | Auth | Fortify (web), Sanctum (API), rôles, `PostPolicy`, CRUD `/posts` |
+| **4** | Cache & sessions | Redis (`CACHE_STORE` + `SESSION_DRIVER`), stats en cache, préférences utilisateur |
 
 ---
 
@@ -373,132 +385,124 @@ Crée un admin : `admin@example.com` / `password` / `role = admin`.
 
 # Exercice 4 — Cache & Sessions Redis
 
-> **Commit :** `ad8e8c3` — `feat: add user preferences and statistics features`
+> **Commit fonctionnel :** `ad8e8c3` — `feat: add user preferences and statistics features`  
+> **Commit doc :** `60084f6` — commentaires FR + compléments README
 
-Mise en place de **Redis** comme driver pour le **cache applicatif** et les **sessions utilisateur**, avec deux fonctionnalités :
+Passage du cache et des sessions de **database** vers **Redis** (`predis/predis`). Deux fonctionnalités métier :
 
-1. **Préférences** — thème (`light` / `dark`) et langue (`fr` / `en`) stockés en **session Redis**
-2. **Statistiques** — compteurs users/tasks mis en cache via `Cache::remember()` (TTL 1 h), vidables par l'admin
+1. **Sessions Redis** — préférences utilisateur (thème clair/sombre, langue fr/en) via `session()`
+2. **Cache Redis** — statistiques (`User::count()`, `Task::count()`) mises en cache 1 h avec `Cache::remember()`
 
-### Configuration `.env` (Exo 4)
+## Objectifs pédagogiques
+
+- Comprendre la différence **session** (données par utilisateur) vs **cache** (données partagées, performance)
+- Observer un **cache hit** (0 requête SQL) vs **cache miss** (2 requêtes) grâce à `DB::listen()` dans les logs
+- Vider le cache côté app (`Cache::forget`) ou côté Redis (`redis-cli FLUSHDB`)
+
+## Configuration `.env` (Exo 4)
 
 | Variable | Valeur | Rôle |
 |----------|--------|------|
-| `SESSION_DRIVER` | `redis` | Sessions web (préférences, flash messages) dans Redis |
-| `CACHE_STORE` | `redis` | Cache Laravel (clé `stats`) dans Redis DB 1 |
-| `REDIS_CLIENT` | `predis` | Client PHP Redis (package `predis/predis`) |
-| `QUEUE_CONNECTION` | `redis` | Files d'attente Redis *(optionnel)* |
+| `SESSION_DRIVER` | `redis` | Sessions web (préférences, messages flash) |
+| `CACHE_STORE` | `redis` | Cache Laravel — clé `stats`, DB Redis `1` |
+| `REDIS_CLIENT` | `predis` | Client PHP (sans extension `phpredis`) |
+| `REDIS_HOST` | `127.0.0.1` | Serveur Redis local |
+| `REDIS_PORT` | `6379` | Port par défaut |
+| `QUEUE_CONNECTION` | `redis` | Files d'attente *(optionnel)* |
 
-### Commandes (Exo 4)
+Fichier modèle : `.env.example` (valeurs Redis documentées).
+
+## Commandes (Exo 4)
 
 | Commande | Rôle |
 |----------|------|
-| `brew install redis && brew services start redis` | Installer et démarrer Redis (macOS) |
-| `composer require predis/predis` | Client Redis PHP (ajouté au `composer.json`) |
-| `php artisan make:controller PreferenceController` | Contrôleur préférences session |
-| `php artisan make:controller StatsController` | Contrôleur stats + vidage cache |
-| `redis-cli ping` | Vérifier que Redis répond `PONG` |
-| `redis-cli FLUSHDB` | Vider la base Redis courante (debug) |
-| `redis-cli KEYS "*stats*"` | Inspecter les clés cache Laravel |
-| `tail -f storage/logs/laravel.log` | Observer les requêtes SQL (`DB::listen`) |
+| `brew install redis && brew services start redis` | Installer / démarrer Redis (macOS) |
+| `composer require predis/predis` | Client Redis PHP |
+| `php artisan make:controller PreferenceController` | Gestion préférences session |
+| `php artisan make:controller StatsController` | Stats + vidage cache |
+| `redis-cli ping` | Doit répondre `PONG` |
+| `redis-cli FLUSHDB` | Vide la base Redis active (debug, comme en terminal) |
+| `redis-cli KEYS "*stats*"` | Liste les clés cache Laravel |
+| `tail -f storage/logs/laravel.log` | Voir les requêtes SQL loguées par `DB::listen` |
 
-### Routes ajoutées
+## Routes web (Exo 4)
 
 | Méthode | URL | Auth | Action |
 |---------|-----|------|--------|
-| `GET` | `/preferences` | Non* | Formulaire thème / langue |
-| `POST` | `/preferences` | Non* | Enregistre en session Redis |
-| `GET` | `/stats` | Non* | Affiche stats (cache Redis 1 h) |
-| `POST` | `/cache/flush` | Oui (admin) | `Cache::forget('stats')` |
+| `GET` | `/preferences` | — | Affiche formulaire thème / langue |
+| `POST` | `/preferences` | — | Enregistre en session Redis |
+| `GET` | `/stats` | — | Compteurs users + tasks (depuis cache ou BDD) |
+| `POST` | `/cache/flush` | Admin | Supprime la clé `stats` du cache |
 
-\* Routes publiques dans le code actuel ; à protéger par `auth` en production.
+## Fonctionnement cache / sessions
 
-### Fonctionnement cache / sessions
+```text
+1ère visite /stats
+  → Cache MISS
+  → 2 requêtes SQL : SELECT COUNT(*) users, SELECT COUNT(*) tasks
+  → Résultat stocké dans Redis (TTL 3600 s, clé préfixée laravel-cache-stats)
 
+2ème visite /stats
+  → Cache HIT
+  → 0 requête SQL (vérifier storage/logs/laravel.log)
+
+POST /cache/flush (admin connecté)
+  → Cache::forget('stats')
+  → Redirect /dashboard + message « Cache vidé ! »
+  → Prochaine visite /stats = MISS à nouveau
 ```
-1ère visite /stats  →  Cache MISS  →  2 requêtes SQL (COUNT users, COUNT tasks)
-                    →  résultat stocké dans Redis (clé laravel-cache-stats, TTL 3600s)
 
-2ème visite /stats  →  Cache HIT   →  0 requête SQL (vérifiable dans laravel.log)
+**Test manuel :**
 
-POST /cache/flush (admin)  →  Cache::forget('stats')  →  prochaine visite = MISS
-```
+1. Aller sur `/stats` → noter 2 lignes SQL dans `laravel.log`
+2. Recharger `/stats` → aucune nouvelle requête SQL
+3. Se connecter en admin → cliquer « Vider le cache » ou exécuter `redis-cli FLUSHDB`
+4. Recharger `/stats` → 2 requêtes SQL réapparaissent
 
-Équivalent CLI du vidage global : `redis-cli FLUSHDB` (vide toute la DB Redis sélectionnée).
+## Fichiers du commit `ad8e8c3` (+ doc `60084f6`)
 
-### Fichiers du commit `ad8e8c3`
+| Fichier | Rôle |
+|---------|------|
+| `app/Http/Controllers/StatsController.php` | `Cache::remember('stats', 3600)` + `Cache::forget` (admin) |
+| `app/Http/Controllers/PreferenceController.php` | Lecture/écriture `session('theme')`, `session('locale')` |
+| `app/Providers/AppServiceProvider.php` | `DB::listen()` pour tracer les requêtes SQL |
+| `routes/web.php` | Routes `/preferences`, `/stats`, `/cache/flush` |
+| `resources/views/stats/index.blade.php` | Cartes statistiques + bouton vidage cache admin |
+| `resources/views/preferences/index.blade.php` | Formulaire thème et langue |
+| `resources/views/dashboard.blade.php` | Liens stats/préférences + flash success |
+| `resources/views/components/app-layout.blade.php` | Thème sombre via `session('theme')`, liens navbar |
+| `composer.json` | Dépendance `predis/predis` ^3.5 |
+| `.env.example` | `SESSION_DRIVER=redis`, `CACHE_STORE=redis` |
 
-#### `app/Http/Controllers/StatsController.php`
+### Détail : `StatsController.php`
 
-- `index()` — `Cache::remember('stats', 3600, fn)` retourne `{ users, tasks }`
-- `flush()` — `Cache::forget('stats')`, réservé admin (`isAdmin()`), redirect dashboard + flash
+| Méthode | Comportement |
+|---------|--------------|
+| `index()` | `Cache::remember('stats', 3600, fn)` — exécute les `COUNT` uniquement si absent du cache |
+| `flush()` | `abort_unless(isAdmin())` puis `Cache::forget('stats')` — redirect dashboard |
 
----
+### Détail : `PreferenceController.php`
 
-#### `app/Http/Controllers/PreferenceController.php`
+| Méthode | Comportement |
+|---------|--------------|
+| `index()` | Passe `theme` et `locale` depuis la session à la vue |
+| `store()` | Valide `light|dark` et `fr|en`, puis `session([...])` |
 
-- `index()` — lit `session('theme')` et `session('locale')` pour pré-remplir le formulaire
-- `store()` — valide et persiste `theme` / `locale` via `session([...])`
+### Détail : `app-layout.blade.php` (Exo 4)
 
----
+- `<main class="... {{ session('theme') === 'dark' ? 'bg-gray-900 text-white' : '' }}">` — thème appliqué globalement
+- Liens **Statistiques** et **Préférences** dans la navbar (utilisateur connecté)
 
-#### `app/Providers/AppServiceProvider.php`
+## Correctif migration (commit `73a4cec`)
 
-- `DB::listen()` — log chaque requête SQL pour démontrer cache hit (0 SQL) vs miss (2 SQL)
+`php artisan migrate` échouait sur `2026_06_02_124242_create_personal_access_tokens_table` (table déjà créée par `123705`).  
+Migration doublon **supprimée** — une seule table `personal_access_tokens` suffit pour Sanctum.
 
----
+## Dépendances Exo 3 requises pour Exo 4
 
-#### `routes/web.php`
-
-- Routes `/preferences`, `/stats`, `/cache/flush`
-- Imports `PreferenceController` et `StatsController`
-
----
-
-#### `resources/views/stats/index.blade.php`
-
-- Affiche `$stats['users']` et `$stats['tasks']`
-- Bouton « Vider le cache » visible uniquement pour les admins (`@if(auth()->user()->isAdmin())`)
-
----
-
-#### `resources/views/preferences/index.blade.php`
-
-- Formulaire select thème (clair/sombre) et langue (fr/en)
-- Affiche les valeurs session actuelles
-
----
-
-#### `resources/views/dashboard.blade.php`
-
-- Liens vers `/stats` et `/preferences`
-- Affichage du message flash `session('success')` après vidage cache
-
----
-
-#### `resources/views/components/app-layout.blade.php`
-
-- Classe CSS conditionnelle selon `session('theme')` (fond sombre si `dark`)
-- Liens navbar : Statistiques, Préférences
-
----
-
-#### `composer.json` / `composer.lock`
-
-- Ajout de `predis/predis` ^3.5 (client Redis sans extension phpredis)
-
----
-
-#### `.env.example`
-
-- `SESSION_DRIVER=redis`, `CACHE_STORE=redis`, `REDIS_CLIENT=predis`, `QUEUE_CONNECTION=redis`
-
----
-
-### Migration doublon (résolu)
-
-La migration `2026_06_02_124242_create_personal_access_tokens_table` échouait car la table existait déjà (double `vendor:publish` Sanctum).  
-Supprimée dans le commit **`73a4cec`**.
+- `User::count()` et `Task::count()` (modèles Exo 1 + 3)
+- `auth()->user()->isAdmin()` (rôle admin, Exo 3 + `AdminSeeder`)
+- Layout `<x-app-layout>` (Exo 2)
 
 ---
 
