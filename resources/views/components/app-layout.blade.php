@@ -5,6 +5,7 @@
 @props(['header' => null])
 <nav class="bg-white border-b px-4 py-3 flex flex-wrap gap-4 items-center">
     @auth
+        <a href="{{ route('newsletters.index') }}">Newsletters</a>
         <a href="{{ route('dashboard') }}">Dashboard</a>
         <a href="{{ route('posts.index') }}">Articles</a>
         <a href="{{ route('stats.index') }}">Statistiques</a>

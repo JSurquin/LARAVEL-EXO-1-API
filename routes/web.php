@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\PreferenceController; // Exo 4 — préférences session
 use App\Http\Controllers\StatsController;    // Exo 4 — statistiques + cache Redis
+use App\Http\Controllers\NewsletterController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -28,3 +29,7 @@ Route::post('/preferences', [PreferenceController::class, 'store'])->name('prefe
 // Exo 4 — statistiques avec cache Redis + bouton de vidage (admin)
 Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
 Route::post('/cache/flush', [StatsController::class, 'flush'])->name('cache.flush')->middleware('auth');
+
+Route::resource('newsletters', NewsletterController::class)
+    ->only(['index', 'create', 'store'])
+    ->middleware(['auth']);
