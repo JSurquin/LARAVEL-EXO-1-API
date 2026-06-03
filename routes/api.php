@@ -13,3 +13,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tasks', TaskController::class); // CRUD tasks sécurisé
     Route::post('/auth/logout', [AuthController::class, 'logout']); // Révoque le token
 });
+
+
+// pour les tests feature
+Route::apiResource('tasks', TaskController::class);
