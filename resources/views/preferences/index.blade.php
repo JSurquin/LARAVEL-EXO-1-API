@@ -1,3 +1,4 @@
+{{-- Préférences — thème et langue persistés en session Redis (SESSION_DRIVER=redis) --}}
 <x-app-layout>
     <x-slot name="header"><h2>Mes préférences</h2></x-slot>
     <div class="max-w-xl mx-auto py-8">
@@ -8,6 +9,7 @@
             @csrf
             <div>
                 <label class="font-medium">Thème</label>
+                {{-- Valeur actuelle lue depuis session('theme') --}}
                 <select name="theme" class="border rounded p-2 w-full mt-1">
                     <option value="light" {{ $theme === 'light' ? 'selected' : '' }}>Clair</option>
                     <option value="dark"  {{ $theme === 'dark'  ? 'selected' : '' }}>Sombre</option>

@@ -1,7 +1,7 @@
+{{-- Page statistiques — données servies par Cache::remember (Redis, clé 'stats', TTL 1 h) --}}
 <x-app-layout title="Statistiques">
     <h1 class="text-2xl font-bold mb-6">Statistiques de l'application</h1>
 
-    {{-- Flash success (préférences, etc.) — le vidage cache redirige vers le dashboard --}}
     @if(session('success'))
         <div class="bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded mb-6">
             {{ session('success') }}
@@ -9,6 +9,7 @@
     @endif
 
     <div class="grid grid-cols-2 gap-4">
+        {{-- Valeurs lues depuis le cache Redis (ou recomptées si cache miss) --}}
         <div class="bg-white rounded-xl shadow p-6 text-center">
             <p class="text-4xl font-bold text-indigo-600">{{ $stats['users'] }}</p>
             <p class="text-gray-500 mt-2">Utilisateurs</p>
@@ -21,6 +22,7 @@
 
     @auth
         @if(auth()->user()->isAdmin())
+            {{-- POST /cache/flush → Cache::forget('stats') — équivalent applicatif de redis-cli FLUSHDB ciblé --}}
             <form method="POST" action="{{ route('cache.flush') }}" class="mt-6">
                 @csrf
                 <button class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
@@ -28,7 +30,7 @@
                 </button>
             </form>
             <p class="text-xs text-gray-400 mt-2">
-                Après vidage, la prochaine visite recompte en base de données.
+                Après vidage, la prochaine visite recompte en base de données (vérifiable dans laravel.log via DB::listen).
             </p>
         @endif
     @endauth
